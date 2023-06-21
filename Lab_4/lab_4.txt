@@ -1,0 +1,145 @@
+ALTER TABLE customer
+ADD COLUMN ucr VARCHAR(255),
+ADD COLUMN dcr TIMESTAMP,
+ADD COLUMN ulc VARCHAR(255),
+ADD COLUMN dlc TIMESTAMP;
+
+ALTER TABLE qualification
+ADD COLUMN ucr VARCHAR(255),
+ADD COLUMN dcr TIMESTAMP,
+ADD COLUMN ulc VARCHAR(255),
+ADD COLUMN dlc TIMESTAMP;
+
+ALTER TABLE position
+ADD COLUMN ucr VARCHAR(255),
+ADD COLUMN dcr TIMESTAMP,
+ADD COLUMN ulc VARCHAR(255),
+ADD COLUMN dlc TIMESTAMP;
+
+ALTER TABLE contract_category
+ADD COLUMN ucr VARCHAR(255),
+ADD COLUMN dcr TIMESTAMP,
+ADD COLUMN ulc VARCHAR(255),
+ADD COLUMN dlc TIMESTAMP;
+
+ALTER TABLE employee
+ADD COLUMN ucr VARCHAR(255),
+ADD COLUMN dcr TIMESTAMP,
+ADD COLUMN ulc VARCHAR(255),
+ADD COLUMN dlc TIMESTAMP;
+
+ALTER TABLE project
+ADD COLUMN ucr VARCHAR(255),
+ADD COLUMN dcr TIMESTAMP,
+ADD COLUMN ulc VARCHAR(255),
+ADD COLUMN dlc TIMESTAMP;
+
+ALTER TABLE project_employee
+ADD COLUMN ucr VARCHAR(255),
+ADD COLUMN dcr TIMESTAMP,
+ADD COLUMN ulc VARCHAR(255),
+ADD COLUMN dlc TIMESTAMP;
+
+ALTER TABLE work_log
+ADD COLUMN ucr VARCHAR(255),
+ADD COLUMN dcr TIMESTAMP,
+ADD COLUMN ulc VARCHAR(255),
+ADD COLUMN dlc TIMESTAMP;
+
+ALTER TABLE invoice
+ADD COLUMN ucr VARCHAR(255),
+ADD COLUMN dcr TIMESTAMP,
+ADD COLUMN ulc VARCHAR(255),
+ADD COLUMN dlc TIMESTAMP;
+
+ALTER TABLE salary
+ADD COLUMN ucr VARCHAR(255),
+ADD COLUMN dcr TIMESTAMP,
+ADD COLUMN ulc VARCHAR(255),
+ADD COLUMN dlc TIMESTAMP;
+CREATE OR REPLACE FUNCTION populate_surrogate_key()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.surrogate_key := nextval('surrogate_key_seq');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+
+-- Створіть тригер для виклику функції на INSERT
+CREATE TRIGGER insert_surrogate_key_trigger
+BEFORE INSERT ON specific_table
+FOR EACH ROW
+EXECUTE FUNCTION populate_surrogate_key();
+
+
+-- Створіть функцію запуску для перевірки неоплачених проектів перед вставленням нового проекту
+CREATE OR REPLACE FUNCTION check_unpaid_projects()
+RETURNS TRIGGER AS $$
+DECLARE
+  unpaid_projects_count INTEGER;
+BEGIN
+  -- Підрахуйте кількість неоплачених проектів замовника за останні 3 місяці
+  SELECT COUNT(*) INTO unpaid_projects_count
+  FROM project
+  WHERE customer_id = NEW.customer_id
+    AND start_date <= (CURRENT_DATE - INTERVAL '3 months')
+    AND id NOT IN (
+      SELECT DISTINCT project_id
+      FROM invoice
+      WHERE customer_id = NEW.customer_id
+        AND due_date >= CURRENT_DATE
+    );
+
+-- Якщо є неоплачені проекти, забороніть вставляти новий проект
+  IF unpaid_projects_count > 0 THEN
+    RAISE EXCEPTION 'Cannot order a new project. Unpaid projects exist within the last 3 months.';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER check_unpaid_projects_trigger
+BEFORE INSERT OR UPDATE ON project
+FOR EACH ROW
+EXECUTE FUNCTION check_unpaid_projects();
+
+
+INSERT INTO project (name, customer_id, start_date)
+VALUES ('Project3', 1, '2023-06-01');
+
+--2
+CREATE OR REPLACE FUNCTION check_daily_working_hours()
+RETURNS TRIGGER AS $$
+DECLARE
+  total_hours_worked NUMERIC;
+BEGIN
+  -- Розрахувати загальну кількість годин, відпрацьованих працівником поточного дня
+  SELECT COALESCE(SUM(hours_worked), 0) INTO total_hours_worked
+  FROM work_log
+  WHERE employee_id = NEW.employee_id
+    AND work_date = NEW.work_date;
+
+-- Якщо загальна кількість відпрацьованих годин перевищує 10, забороніть вставляти журнал роботи
+  IF (total_hours_worked + NEW.hours_worked) > 10 THEN
+    RAISE EXCEPTION 'Робочий день працівника не може перевищувати 10 годин.';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Створіть тригер для виклику функції перед вставленням робочого журналу
+CREATE TRIGGER check_daily_working_hours_trigger
+BEFORE INSERT OR UPDATE ON work_log
+FOR EACH ROW
+EXECUTE FUNCTION check_daily_working_hours();
+
+INSERT INTO work_log (employee_id, project_id, work_date, hours_worked)
+VALUES (1, 1, '2023-06-01', 6);
+

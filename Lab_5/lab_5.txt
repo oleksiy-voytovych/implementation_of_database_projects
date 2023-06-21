@@ -1,0 +1,77 @@
+--1
+-- Створення користувача "Адміністратор"
+CREATE USER admin WITH PASSWORD 'admin_password';
+
+-- Створення користувача "Менеджер проектів"
+CREATE USER project_manager WITH PASSWORD 'manager_password';
+
+-- Створення користувача "Аналітик"
+CREATE USER analyst WITH PASSWORD 'analyst_password';
+
+-- Створення користувача "Клієнт"
+CREATE USER client WITH PASSWORD 'client_password';
+--2
+-- Надання привілеїв користувачу "Адміністратор"
+GRANT ALL PRIVILEGES ON DATABASE implementationprojects TO admin;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO admin;
+
+-- Надання привілеїв користувачу "Менеджер проектів"
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO project_manager;
+
+-- Надання привілеїв користувачу "Аналітик"
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO analyst;
+
+-- Надання привілеїв користувачу "Клієнт"
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO client;
+--3
+-- Створення ролі "Адміністратор"
+CREATE ROLE administrator;
+
+-- Створення ролі "Менеджер проектів"
+CREATE ROLE project_manager;
+
+-- Створення ролі "Аналітик"
+CREATE ROLE analyst;
+
+-- Створення ролі "Клієнт"
+CREATE ROLE client;
+--4
+-- Надання привілеїв ролі "Адміністратор"
+GRANT ALL PRIVILEGES ON DATABASE implementationprojects TO administrator;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO administrator;
+
+-- Надання привілеїв ролі "Менеджер проектів"
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO project_manager;
+
+-- Надання привілеїв ролі "Аналітик"
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO analyst;
+
+-- Надання привілеїв ролі "Клієнт"
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO client;
+--5
+-- Призначення ролі "Адміністратор" користувачу "Адміністратор"
+GRANT administrator TO admin;
+
+-- Призначення ролі "Менеджер проектів" користувачу "Менеджер проектів"
+GRANT project_manager TO project_manager;
+
+-- Призначення ролі "Аналітик" користувачу "Аналітик"
+GRANT analyst TO analyst;
+
+-- Призначення ролі "Клієнт" користувачу "Клієнт"
+GRANT client TO client;
+--6-- 
+Відкликання привілеїв ролі "Менеджер проектів" у користувача "Менеджер проектів"
+REVOKE SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public FROM project_manager;
+--7
+-- Відкликання ролі "Менеджер проектів" у користувача "Менеджер проектів"
+REVOKE project_manager FROM project_manager;
+--8
+-- Видалення ролі "Менеджер проектів"
+DROP ROLE project_manager;
+
+
+
+SELECT usename FROM pg_user WHERE usename IN ('admin', 'project_manager', 'analyst', 'client');
+
+

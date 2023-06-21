@@ -1,0 +1,123 @@
+
+
+--1
+SELECT *
+FROM employee
+WHERE position_id = 1 AND (qualification_id = 1 OR qualification_id = 2)
+ORDER BY name;
+
+--2
+SELECT name, hourly_rate * 8 AS daily_rate
+FROM qualification;
+
+
+
+
+
+
+---3
+SELECT p.name AS project_name, e.name AS employee_name
+FROM project_employee pe
+JOIN project p ON pe.project_id = p.id
+JOIN employee e ON pe.employee_id = e.id
+WHERE (p.start_date BETWEEN '2023-01-01' AND '2023-06-01') OR (e.position_id = 2 AND e.qualification_id = 3)
+ORDER BY p.name, e.name;
+
+
+---4
+SELECT customer.name, project.name
+FROM customer
+LEFT JOIN project ON customer.id = project.customer_id;
+--5
+SELECT *
+FROM employee
+WHERE name LIKE 'J%'
+  AND daily_working_hours  BETWEEN 10 AND 20
+  AND position_id IN (1, 2, 3)
+  AND EXISTS (SELECT 1 FROM work_log WHERE employee_id = employee.id)
+  AND daily_working_hours > ALL (SELECT daily_working_hours FROM employee WHERE qualification_id = 1);
+
+--6
+SELECT project_id, SUM(hours_worked) AS total_hours
+FROM work_log
+GROUP BY project_id;
+--7
+SELECT name
+FROM employee
+WHERE qualification_id = (SELECT id FROM qualification WHERE name = 'QA Tester');
+--8	
+SELECT e.name AS employee_name, w.total_hours
+FROM (SELECT employee_id, SUM(hours_worked) AS total_hours FROM work_log GROUP BY employee_id) w
+JOIN employee e ON e.id = w.employee_id;
+
+--9
+WITH RECURSIVE subordinates AS (
+  SELECT id, name, position_id
+  FROM employee
+  WHERE name = 'Robert Johnson'
+  UNION
+  SELECT e.id, e.name, e.position_id
+  FROM employee e
+  INNER JOIN subordinates s ON e.position_id = s.id
+)
+SELECT *
+FROM subordinates;
+--10
+SELECT
+  employee.name AS employee_name,
+  MAX(CASE WHEN project.id = 1 THEN project.name END) AS project_1_name,
+  MAX(CASE WHEN project.id = 2 THEN project.name END) AS project_2_name,
+  MAX(CASE WHEN project.id = 3 THEN project.name END) AS project_3_name,
+  MAX(CASE WHEN project.id = 4 THEN project.name END) AS project_4_name
+FROM employee
+JOIN project_employee ON employee.id = project_employee.employee_id
+JOIN project ON project.id = project_employee.project_id
+GROUP BY employee.name;
+
+
+
+
+--11
+UPDATE employee
+SET daily_working_hours = LEAST(daily_working_hours + 1, 10)
+WHERE id IN (SELECT employee_id FROM work_log WHERE project_id = 1);
+--12
+UPDATE employee
+SET daily_working_hours = daily_working_hours + 1
+WHERE id IN (
+  SELECT employee_id
+  FROM project_employee
+  WHERE project_id = 1
+) AND (daily_working_hours + 1) <= 10;
+
+--13
+INSERT INTO employee (name, position_id, qualification_id, daily_working_hours)
+VALUES ('John Doe', 1, 1, (SELECT daily_working_hours FROM employee WHERE id = 2) + 1);
+
+
+
+--14
+INSERT INTO employee (name, position_id, qualification_id, daily_working_hours)
+SELECT 'John Doe', p.id, q.id, 8
+FROM position p, qualification q
+LIMIT 1;
+
+
+
+--15
+DELETE FROM work_log;
+--16
+DELETE FROM customer
+WHERE email = 'johndoe@example.com';
+
+
+
+
+
+
+
+
+
+
+
+

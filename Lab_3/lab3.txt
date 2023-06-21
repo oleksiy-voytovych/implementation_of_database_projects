@@ -1,0 +1,41 @@
+CREATE OR REPLACE PROCEDURE calculate_salary(
+  p_employee_id INTEGER,
+  p_month DATE
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  INSERT INTO salary (employee_id, month, amount)
+  SELECT e.id, p_month, SUM(wl.hours_worked * q.hourly_rate * p.hourly_rate * cc.hourly_rate_multiplier)
+  FROM work_log wl
+  JOIN employee e ON wl.employee_id = e.id
+  JOIN qualification q ON e.qualification_id = q.id
+  JOIN project_employee pe ON wl.project_id = pe.project_id AND wl.employee_id = pe.employee_id
+  JOIN project proj ON wl.project_id = proj.id
+  JOIN position p ON e.position_id = p.id
+  JOIN contract_category cc ON proj.contract_category_id = cc.id
+  WHERE e.id = p_employee_id
+    AND DATE_TRUNC('month', wl.work_date) = DATE_TRUNC('month', p_month)
+  GROUP BY e.id, p_month
+  ON CONFLICT (employee_id, month) DO UPDATE
+  SET amount = EXCLUDED.amount;
+END;
+$$;
+
+
+
+--2
+CREATE OR REPLACE PROCEDURE calculate_salary_for_all(p_month DATE)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  employee_row RECORD;
+BEGIN
+  FOR employee_row IN SELECT id FROM employee
+  LOOP
+    CALL calculate_salary(employee_row.id, p_month);
+  END LOOP;
+END;
+$$;
+
+
